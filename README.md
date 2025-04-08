@@ -42,14 +42,10 @@ pip install -r requirements.txt
 ## ⚙️ Usage
 
 ```bash
-python scanner.py https://example-site.com
+python main.py --url https://example-site.com
 ```
 
-You can also set depth for crawling (default is 1):
-
-```bash
-python scanner.py https://example-site.com --depth 2
-```
+You can also set depth for crawling from **crawl_and_test_xss** function (default is 0):
 
 ---
 
