@@ -1,0 +1,44 @@
+🔒 WagSecure Security Report
+📅 Generated on: 2025-04-08 17:36:35
+🌐 Target URL: https://wagtail.org
+============================================================
+
+Security Headers:
+=================
+  ✅ X-Frame-Options: DENY
+  ❌ Content-Security-Policy: Missing
+  ❌ Strict-Transport-Security: Needs improvement: max-age=15552000; includeSubDomains
+  ✅ X-Content-Type-Options: nosniff
+  ✅ Referrer-Policy: same-origin
+  ✅ Permissions-Policy: accelerometer=(), ambient-light-sensor=(), autoplay=(), camera=(), display-capture=(), document-domain=(), encrypted-media=(), geolocation=(), gyroscope=(), interest-cohort=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), usb=()
+
+Admin Page Exposure:
+====================
+  ⚠️ Admin login page is accessible.
+
+XSS Vulnerabilities:
+====================
+  ✅ No XSS vulnerabilities detected.
+
+Open Ports:
+===========
+  ⚠️ Port 443 is open
+  ⚠️ Port 80 is open
+  ⚠️ Port 2082 is open
+  ⚠️ Port 8443 is open
+  ⚠️ Port 8080 is open
+
+Debug Mode Exposure:
+====================
+  ✅ Django DEBUG mode is not exposed.
+
+Severity Summary:
+=================
+  ⚠️ Critical Issues: 6
+  ✅ Passed Checks: 4
+
+Recommendations:
+================
+  ⚠️ Immediate Action Required:
+    - Close unnecessary open ports
+    - Restrict access to admin interface
