@@ -1,20 +1,26 @@
-2025-04-08 17:44:54,583 - INFO - Starting scan for https://wagtail.org/
-2025-04-08 17:44:55,083 - INFO - Wagtail CMS detected, proceeding with vulnerability checks
-2025-04-08 17:44:55,083 - INFO - Checking security headers
-2025-04-08 17:44:55,083 - INFO - X-Frame-Options is properly set to DENY
-2025-04-08 17:44:55,083 - WARNING - Missing Content-Security-Policy – Protects against XSS and data injection
-2025-04-08 17:44:55,084 - WARNING - Strict-Transport-Security configuration needs improvement
-2025-04-08 17:44:55,084 - INFO - X-Content-Type-Options is properly set to nosniff
-2025-04-08 17:44:55,084 - INFO - Referrer-Policy is properly set to same-origin
-2025-04-08 17:44:55,084 - INFO - Permissions-Policy is properly configured
-2025-04-08 17:44:55,890 - INFO - Starting port scan for wagtail.org
-2025-04-08 17:44:55,933 - WARNING - Port 443 is open
-2025-04-08 17:44:55,939 - WARNING - Port 80 is open
-2025-04-08 17:44:56,946 - WARNING - Port 2082 is open
-2025-04-08 17:44:57,943 - WARNING - Port 8080 is open
-2025-04-08 17:44:57,952 - WARNING - Port 8443 is open
-2025-04-08 17:45:27,987 - INFO - Starting XSS scan for https://wagtail.org/ with max depth 0
-2025-04-08 17:45:28,185 - INFO - Crawling: https://wagtail.org/ (depth 0)
-2025-04-08 17:45:31,208 - INFO - No XSS vulnerabilities found
-2025-04-08 17:45:31,210 - INFO - Generating security report for https://wagtail.org/
-2025-04-08 17:45:31,212 - INFO - Report saved to reports/wagsecure_report_wagtail.org_20250408_174531.txt
+2025-04-08 18:10:18,641 - INFO - Starting scan for https://wagtail.org/
+2025-04-08 18:10:18,915 - INFO - Wagtail CMS detected, proceeding with vulnerability checks
+2025-04-08 18:10:18,916 - INFO - Checking security headers
+2025-04-08 18:10:18,916 - INFO - X-Frame-Options is properly set to DENY
+2025-04-08 18:10:18,916 - WARNING - Missing Content-Security-Policy – Protects against XSS and data injection
+2025-04-08 18:10:18,916 - WARNING - Strict-Transport-Security configuration needs improvement
+2025-04-08 18:10:18,916 - INFO - X-Content-Type-Options is properly set to nosniff
+2025-04-08 18:10:18,916 - INFO - Referrer-Policy is properly set to same-origin
+2025-04-08 18:10:18,916 - INFO - Permissions-Policy is properly configured
+2025-04-08 18:10:19,832 - WARNING - Admin login page is publicly accessible at https://wagtail.org/admin/
+2025-04-08 18:10:19,836 - INFO - CSRF Token found
+2025-04-08 18:10:20,330 - INFO - Input sanitization appears effective
+2025-04-08 18:10:20,950 - INFO - Error messages are generic
+2025-04-08 18:10:20,950 - INFO - Testing for basic rate-limiting
+2025-04-08 18:10:21,360 - INFO - Rate limiting in place
+2025-04-08 18:10:21,363 - INFO - Starting port scan for wagtail.org
+2025-04-08 18:10:21,406 - WARNING - Port 443 is open
+2025-04-08 18:10:21,410 - WARNING - Port 80 is open
+2025-04-08 18:10:22,422 - WARNING - Port 2082 is open
+2025-04-08 18:10:23,427 - WARNING - Port 8443 is open
+2025-04-08 18:10:23,430 - WARNING - Port 8080 is open
+2025-04-08 18:10:53,547 - INFO - Starting XSS scan for https://wagtail.org/ with max depth 0
+2025-04-08 18:10:53,751 - INFO - Crawling: https://wagtail.org/ (depth 0)
+2025-04-08 18:10:56,756 - INFO - No XSS vulnerabilities found
+2025-04-08 18:10:56,758 - INFO - Generating security report for https://wagtail.org/
+2025-04-08 18:10:56,761 - INFO - Report saved to reports/wagsecure_report_wagtail.org_20250408_181056.txt

@@ -1,6 +1,6 @@
 🔒 WagSecure Security Report
-📅 Generated on: 2025-04-08 17:36:35
-🌐 Target URL: https://wagtail.org
+📅 Generated on: 2025-04-08 18:10:56
+🌐 Target URL: https://wagtail.org/
 ============================================================
 
 Security Headers:
@@ -12,9 +12,13 @@ Security Headers:
   ✅ Referrer-Policy: same-origin
   ✅ Permissions-Policy: accelerometer=(), ambient-light-sensor=(), autoplay=(), camera=(), display-capture=(), document-domain=(), encrypted-media=(), geolocation=(), gyroscope=(), interest-cohort=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), usb=()
 
-Admin Page Exposure:
+Admin Page Security:
 ====================
   ⚠️ Admin login page is accessible.
+  ✅ CSRF Protection
+  ✅ XSS Protection
+  ✅ Secure Error Messages
+  ✅ Rate Limiting
 
 XSS Vulnerabilities:
 ====================

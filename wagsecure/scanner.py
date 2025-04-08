@@ -93,7 +93,7 @@ def scan_site(url: str, timeout: int = DEFAULT_TIMEOUT) -> None:
         print(f"{Fore.GREEN}[+] Wagtail CMS detected. Proceeding with vulnerability checks...{Style.RESET_ALL}")
         
         headers_info = check_security_headers(response)
-        admin_exposed = check_admin_access(url)
+        admin_exposed, admin_security = check_admin_access(url)
 
         hostname = urlparse(url).hostname
         open_ports = check_open_ports(hostname)
@@ -113,6 +113,7 @@ def scan_site(url: str, timeout: int = DEFAULT_TIMEOUT) -> None:
             open_ports=open_ports,
             debug_exposed=debug_exposed,
             admin_exposed=admin_exposed,
+            admin_security=admin_security,
             filename=str(report_filename)
         )
 
@@ -163,29 +164,114 @@ def detect_wagtail(response: requests.Response) -> bool:
         print(f"{Fore.YELLOW}[-] Wagtail CMS not detected ⚠️{Style.RESET_ALL}")
         return False
 
-def check_admin_access(url):
+def check_admin_access(url: str) -> Tuple[bool, Dict[str, bool]]:
+    """Check if admin interface is accessible and test its security.
+    
+    Args:
+        url (str): The base URL to check
+        
+    Returns:
+        Tuple[bool, Dict[str, bool]]: (is_accessible, security_checks)
+            is_accessible: Whether admin page is accessible
+            security_checks: Dictionary of security check results
+    """
     if not url.endswith('/'):
         url += '/'
     admin_url = url + 'admin/'
+    security_checks = {
+        'csrf_protection': False,
+        'xss_protection': False,
+        'error_message_enumeration': False,
+        'rate_limiting': False
+    }
 
     try:
         res = requests.get(admin_url, timeout=10)
         if res.status_code == 200:
             if "login" in res.text.lower() or "username" in res.text.lower():
+                logging.warning(f"Admin login page is publicly accessible at {admin_url}")
                 print(f"{Fore.RED}[!] Admin login page is publicly accessible at {admin_url} ⚠️{Style.RESET_ALL}")
-                return True
+                
+                # Test admin login security
+                soup = BeautifulSoup(res.text, "html.parser")
+                
+                # Check for CSRF token
+                has_csrf = bool(soup.find("input", attrs={"name": lambda x: x and "csrf" in x.lower()}))
+                security_checks['csrf_protection'] = has_csrf
+                logging.info(f"CSRF Token {'found' if has_csrf else 'not found'}")
+                print(f"  {'✅' if has_csrf else '⚠️'} CSRF Token {'found' if has_csrf else 'not found'}.")
+
+                # Test for XSS in input fields
+                xss_payload = '<script>alert(1)</script>'
+                login_form = soup.find("form")
+                if login_form:
+                    inputs = login_form.find_all("input")
+                    data = {}
+                    for inp in inputs:
+                        name = inp.get("name")
+                        if name and inp.get("type") not in ["submit", "hidden"]:
+                            data[name] = xss_payload
+                    action = login_form.get("action") or admin_url
+                    form_url = urljoin(admin_url, action)
+                    xss_res = requests.post(form_url, data=data, timeout=10)
+
+                    if xss_payload in xss_res.text:
+                        logging.warning(f"XSS payload reflected in response at {form_url}")
+                        print(f"  ⚠️ XSS payload reflected in response! ({form_url})")
+                    else:
+                        security_checks['xss_protection'] = True
+                        logging.info("Input sanitization appears effective")
+                        print(f"  ✅ Input sanitization appears effective.")
+                else:
+                    logging.warning("No login form detected")
+                    print("  ⚠️ No login form detected.")
+
+                # Error message enumeration test
+                if data:
+                    test_data = {
+                        list(data.keys())[0]: "admin",  # username/email field
+                        list(data.keys())[1]: "wrongpass"  # password
+                    }
+                    err_test = requests.post(form_url, data=test_data, timeout=10)
+                    if any(kw in err_test.text.lower() for kw in ["incorrect", "invalid", "wrong", "not match"]):
+                        logging.warning("Error message may help attackers enumerate users")
+                        print("  ⚠️ Error message may help attackers enumerate users.")
+                    else:
+                        security_checks['error_message_enumeration'] = True
+                        logging.info("Error messages are generic")
+                        print("  ✅ Error messages are generic.")
+
+                    # Basic rate limiting check
+                    logging.info("Testing for basic rate-limiting")
+                    print("  ⏱️ Testing for basic rate-limiting...")
+                    too_fast = False
+                    for _ in range(3):
+                        r = requests.post(form_url, data=test_data, timeout=10)
+                        if r.status_code in [429, 403]:
+                            too_fast = True
+                            break
+                        time.sleep(1)
+                    security_checks['rate_limiting'] = too_fast
+                    logging.info(f"Rate limiting {'in place' if too_fast else 'not detected'}")
+                    print(f"  {'✅' if too_fast else '⚠️'} Rate limiting {'in place' if too_fast else 'not detected'}.")
+
+                return True, security_checks
             else:
+                logging.warning(f"Admin page accessible but login form not detected at {admin_url}")
                 print(f"{Fore.YELLOW}[?] Admin page accessible but login form not detected{Style.RESET_ALL}")
-                return True
+                return True, security_checks
         elif res.status_code in [301, 302]:
+            logging.warning(f"Admin URL redirects ({res.status_code})")
             print(f"{Fore.YELLOW}[?] Admin URL redirects ({res.status_code}){Style.RESET_ALL}")
-            return True
+            return True, security_checks
         else:
+            logging.info(f"Admin page not accessible (HTTP {res.status_code})")
             print(f"{Fore.GREEN}[+] Admin page not accessible (HTTP {res.status_code}) ✅{Style.RESET_ALL}")
-            return False
+            return False, security_checks
     except requests.exceptions.RequestException as e:
+        logging.error(f"Failed to reach admin URL: {str(e)}")
         print(f"{Fore.RED}[!] Failed to reach admin URL: {e}{Style.RESET_ALL}")
-        return False
+        return False, security_checks
 
 def check_security_headers(response: requests.Response) -> Dict[str, Tuple[bool, str]]:
     """Check security headers and their values against security best practices.
@@ -563,9 +649,66 @@ def check_debug_mode_exposure(url):
         print(f"{Fore.RED}[!] Failed to test DEBUG mode exposure: {e}{Style.RESET_ALL}")
         return False
 
+def test_admin_login_security(admin_url: str):
+    print(f"\n🔐 Testing admin login security at {admin_url}")
+
+    try:
+        res = requests.get(admin_url, timeout=10)
+        soup = BeautifulSoup(res.text, "html.parser")
+
+        # Check for CSRF token
+        has_csrf = bool(soup.find("input", attrs={"name": lambda x: x and "csrf" in x.lower()}))
+        print(f"  {'✅' if has_csrf else '⚠️'} CSRF Token {'found' if has_csrf else 'not found'}.")
+
+        # Test for XSS in input fields
+        xss_payload = '<script>alert(1)</script>'
+        login_form = soup.find("form")
+        if login_form:
+            inputs = login_form.find_all("input")
+            data = {}
+            for inp in inputs:
+                name = inp.get("name")
+                if name and inp.get("type") not in ["submit", "hidden"]:
+                    data[name] = xss_payload
+            action = login_form.get("action") or admin_url
+            form_url = requests.compat.urljoin(admin_url, action)
+            xss_res = requests.post(form_url, data=data, timeout=10)
+
+            if xss_payload in xss_res.text:
+                print(f"  ⚠️ XSS payload reflected in response! ({form_url})")
+            else:
+                print(f"  ✅ Input sanitization appears effective.")
+        else:
+            print("  ⚠️ No login form detected.")
+
+        # Error message enumeration test
+        data = {
+            list(data.keys())[0]: "admin",  # username/email field
+            list(data.keys())[1]: "wrongpass"  # password
+        }
+        err_test = requests.post(form_url, data=data, timeout=10)
+        if any(kw in err_test.text.lower() for kw in ["incorrect", "invalid", "wrong", "not match"]):
+            print("  ⚠️ Error message may help attackers enumerate users.")
+        else:
+            print("  ✅ Error messages are generic.")
+
+        # Basic rate limiting check
+        print("  ⏱️ Testing for basic rate-limiting...")
+        too_fast = False
+        for _ in range(3):
+            r = requests.post(form_url, data=data, timeout=10)
+            if r.status_code in [429, 403]:
+                too_fast = True
+                break
+            time.sleep(1)
+        print(f"  {'✅' if too_fast else '⚠️'} Rate limiting {'in place' if too_fast else 'not detected'}.")
+
+    except Exception as e:
+        print(f"  ❌ Error testing login: {e}")
+
 def generate_report(url: str, headers_info: Dict[str, Tuple[bool, str]], xss_forms: List[str], 
                    open_ports: List[int], debug_exposed: bool, admin_exposed: bool, 
-                   filename: str) -> None:
+                   admin_security: Dict[str, bool], filename: str) -> None:
     """Generate a detailed security report with proper formatting and sanitization.
     
     Args:
@@ -575,10 +718,8 @@ def generate_report(url: str, headers_info: Dict[str, Tuple[bool, str]], xss_for
         open_ports (List[int]): List of open ports
         debug_exposed (bool): Whether debug mode is exposed
         admin_exposed (bool): Whether admin page is exposed
+        admin_security (Dict[str, bool]): Admin security check results
         filename (str): Path to save the report
-        
-    Note:
-        The report is sanitized to prevent any potential injection attacks.
     """
     logging.info(f"Generating security report for {url}")
     
@@ -607,12 +748,19 @@ def generate_report(url: str, headers_info: Dict[str, Tuple[bool, str]], xss_for
         headers_content.append(f"  {symbol} {header}: {sanitize_text(value)}")
     report_lines.extend(format_section("Security Headers", headers_content))
     
-    # Admin Page Exposure
+    # Admin Page Security
     admin_content = [
         f"  {'⚠️' if admin_exposed else '✅'} Admin login page is "
         f"{'accessible' if admin_exposed else 'not accessible'}."
     ]
-    report_lines.extend(format_section("Admin Page Exposure", admin_content))
+    if admin_exposed:
+        admin_content.extend([
+            f"  {'✅' if admin_security['csrf_protection'] else '⚠️'} CSRF Protection",
+            f"  {'✅' if admin_security['xss_protection'] else '⚠️'} XSS Protection",
+            f"  {'✅' if admin_security['error_message_enumeration'] else '⚠️'} Secure Error Messages",
+            f"  {'✅' if admin_security['rate_limiting'] else '⚠️'} Rate Limiting"
+        ])
+    report_lines.extend(format_section("Admin Page Security", admin_content))
     
     # XSS Vulnerabilities
     xss_content = []
@@ -657,6 +805,14 @@ def generate_report(url: str, headers_info: Dict[str, Tuple[bool, str]], xss_for
             recommendations.append("    - Close unnecessary open ports")
         if admin_exposed:
             recommendations.append("    - Restrict access to admin interface")
+            if not admin_security['csrf_protection']:
+                recommendations.append("    - Implement CSRF protection for admin forms")
+            if not admin_security['xss_protection']:
+                recommendations.append("    - Improve input sanitization in admin forms")
+            if not admin_security['error_message_enumeration']:
+                recommendations.append("    - Use generic error messages for login failures")
+            if not admin_security['rate_limiting']:
+                recommendations.append("    - Implement rate limiting for admin login")
         if debug_exposed:
             recommendations.append("    - Disable DEBUG mode in production")
     else:
