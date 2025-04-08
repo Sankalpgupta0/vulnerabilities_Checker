@@ -41,6 +41,7 @@ pip install -r requirements.txt
 
 ## ⚙️ Usage
 
+-> I recommend you to create a virtual environment before running the script
 ```bash
 python main.py --url https://example-site.com
 ```
